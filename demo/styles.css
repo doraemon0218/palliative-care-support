@@ -295,6 +295,151 @@ input[type="checkbox"] { width: auto; margin-right: 6px; vertical-align: middle;
 .manual-ref { font-size: 0.75rem; color: var(--muted); margin-top: 12px; }
 .manual-ref a { color: var(--accent); }
 
+/* ===== STEP 3: COMPARISON TABLE ===== */
+.ct-scroll-hint {
+  font-size: 0.72rem; color: var(--muted);
+  text-align: center; margin: 4px 0 2px;
+  letter-spacing: .04em;
+}
+
+.ct-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--card);
+  box-shadow: var(--sh);
+  /* right-fade hint */
+  background-image: linear-gradient(to right, transparent calc(100% - 24px), rgba(240,244,249,.9));
+}
+
+.ct-table {
+  border-collapse: collapse;
+  min-width: max-content;
+  width: 100%;
+}
+
+/* All cells */
+.ct-table th,
+.ct-table td {
+  border: 1px solid var(--border);
+  padding: 9px 10px;
+  vertical-align: top;
+}
+
+/* Sticky row-label column */
+.ct-rlabel,
+.ct-rlabel-head {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #f8fafc;
+  border-right: 2px solid var(--bd-strong) !important;
+  width: 52px; min-width: 52px; max-width: 52px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* Drug columns */
+.ct-col {
+  min-width: 142px;
+  width: 142px;
+  text-align: center;
+}
+
+.ct-col-ci {
+  opacity: 0.5;
+  background: #fafafa;
+}
+
+/* Column header */
+.ct-drug-name {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.ct-route-tag {
+  font-size: 0.68rem;
+  background: #f3f4f6;
+  color: var(--muted);
+  padding: 1px 7px;
+  border-radius: 10px;
+  display: inline-block;
+}
+
+/* Dose */
+.ct-dose { font-weight: 800; font-size: 0.95rem; color: #1e293b; }
+.ct-sub  { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
+
+/* Pros */
+.ct-pro {
+  font-size: 0.75rem;
+  color: #15803d;
+  text-align: left;
+  margin-bottom: 3px;
+  line-height: 1.4;
+}
+.ct-pro::before { content: '✓ '; font-weight: 700; }
+
+/* Cons */
+.ct-con {
+  font-size: 0.75rem;
+  color: #92400e;
+  text-align: left;
+  margin-bottom: 3px;
+  line-height: 1.4;
+}
+.ct-con::before { content: '△ '; }
+
+/* Status badges */
+.ct-badge {
+  display: inline-block;
+  font-size: 0.72rem; font-weight: 700;
+  padding: 2px 8px; border-radius: 10px;
+  white-space: nowrap;
+}
+.ct-badge.ok   { background: var(--ok-bg);     color: var(--ok);     border: 1px solid var(--ok-br); }
+.ct-badge.warn { background: var(--warn-bg);   color: var(--warn);   border: 1px solid var(--warn-br); }
+.ct-badge.ci   { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-br); }
+
+.ct-ci-reason {
+  font-size: 0.68rem; color: var(--danger);
+  text-align: left; margin-top: 4px;
+  line-height: 1.4; word-break: break-all;
+}
+.ct-ci-reason.warn { color: var(--warn); }
+
+/* Select button */
+.ct-sel-btn {
+  width: 100%; padding: 9px 4px;
+  border: none; border-radius: var(--r-sm);
+  font-size: 0.82rem; font-weight: 700;
+  cursor: pointer; margin: 0;
+  transition: opacity .15s, box-shadow .15s;
+}
+.ct-sel-btn.active {
+  background: var(--accent); color: #fff;
+  box-shadow: 0 2px 6px rgba(29,78,216,.25);
+}
+.ct-sel-btn.active:hover { opacity: .88; }
+.ct-sel-btn:disabled {
+  background: #e5e7eb; color: #9ca3af; cursor: not-allowed;
+}
+
+/* Zebra rows */
+.ct-table tr:nth-child(even) td,
+.ct-table tr:nth-child(even) .ct-rlabel {
+  background: #fafbfc;
+}
+/* Keep sticky col background clean on zebra */
+.ct-table tr:nth-child(even) .ct-rlabel { background: #f3f4f6; }
+.ct-table .ct-col-ci { opacity: 0.48; }
+
 /* ===== STEP 4: RESULT ===== */
 .result-drug-name {
   font-size: 1.05rem; font-weight: 700;

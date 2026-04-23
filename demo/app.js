@@ -384,84 +384,100 @@ function generateCandidates() {
 }
 
 // ============================================================
-// STEP 3: CANDIDATE CARDS RENDER
+// STEP 3: COMPARISON TABLE
 // ============================================================
 
-function formatDose(c) {
+// 投与量セル（コンパクト表示）
+function fmtDoseCell(c) {
   const d = c.drug;
   if (d.routeType === 'oral') {
-    const freqN   = d.id === 'hydromorphone_oral' ? 1 : 2;
-    const perDose = (c.rounded / freqN).toFixed(1);
-    const freqLbl = d.sr_freq || '1日2回';
-    return `${c.rounded.toFixed(1)} mg/日（${perDose}mg × ${freqLbl}）`;
+    const n = d.id === 'hydromorphone_oral' ? 1 : 2;
+    return `<div class="ct-dose">${c.rounded.toFixed(1)} mg/日</div>
+            <div class="ct-sub">${(c.rounded / n).toFixed(1)}mg × ${d.sr_freq || '1日2回'}</div>`;
   }
   if (d.routeType === 'transdermal') {
-    return `${c.rounded} μg/時パッチ（計算値 ${c.adjDose.toFixed(1)} μg/時）`;
+    return `<div class="ct-dose">${c.rounded} μg/時</div>
+            <div class="ct-sub">パッチ（計算値 ${c.adjDose.toFixed(1)}）</div>`;
   }
   if (d.unitKey === 'mcg_hr') {
-    return `${c.adjDose.toFixed(1)} μg/時 持続`;
+    return `<div class="ct-dose">${c.adjDose.toFixed(1)} μg/時</div>
+            <div class="ct-sub">持続注射</div>`;
   }
-  return `${c.adjDose.toFixed(1)} mg/日（${(c.adjDose / 24).toFixed(2)} mg/時）`;
+  return `<div class="ct-dose">${c.adjDose.toFixed(1)} mg/日</div>
+          <div class="ct-sub">${(c.adjDose / 24).toFixed(2)} mg/時</div>`;
 }
 
-function renderCandidateCard(c) {
-  const isDisabled = c.hasHard;
-  const cardClass  = c.hasHard ? 'ccard ci' : c.hasSoft ? 'ccard warn' : 'ccard ok';
+// 経路ラベル
+function routeTag(rt) {
+  return { oral: '経口', injection: '注射', transdermal: '貼付' }[rt] ?? rt;
+}
 
-  const badge = c.hasHard
-    ? `<span class="badge badge-ci">禁忌相当</span>`
-    : c.hasSoft ? `<span class="badge badge-warn">要注意</span>` : '';
-
-  const ciRow = c.hasHard && c.ciWarnings[0]
-    ? `<p class="ci-text">${escHtml(c.ciWarnings[0].text)}</p>` : '';
-
-  const prosHtml = c.profile.pros.slice(0, 2)
-    .map(p => `<span class="trait pro">${escHtml(p)}</span>`).join('');
-  const consHtml = c.profile.cons.slice(0, 2)
-    .map(p => `<span class="trait con">${escHtml(p)}</span>`).join('');
-
-  const doseRow = `<div class="dose-row">${escHtml(formatDose(c))}</div>`;
-
-  const btnLabel = isDisabled ? '選択不可' : '選択して詳細確認 →';
-
-  return `<div class="${cardClass}">
-    <div class="ccard-head">
-      <span class="ccard-name">${escHtml(c.drug.name)}</span>${badge}
-    </div>
-    ${doseRow}
-    <div class="traits-row">${prosHtml}${consHtml}</div>
-    ${ciRow}
-    <button class="ccard-btn${isDisabled ? ' disabled' : ''}"
-      ${isDisabled ? 'disabled' : `onclick="selectCandidate('${c.drug.id}')"`}>
-      ${btnLabel}
-    </button>
-  </div>`;
+// ステータスバッジ
+function statusCell(c) {
+  if (c.hasHard) {
+    const reason = c.ciWarnings[0] ? `<div class="ct-ci-reason">${escHtml(c.ciWarnings[0].text)}</div>` : '';
+    return `<span class="ct-badge ci">禁忌相当</span>${reason}`;
+  }
+  if (c.hasSoft) {
+    const reason = c.ciWarnings[0] ? `<div class="ct-ci-reason warn">${escHtml(c.ciWarnings[0].text)}</div>` : '';
+    return `<span class="ct-badge warn">要注意</span>${reason}`;
+  }
+  return `<span class="ct-badge ok">適合</span>`;
 }
 
 function renderStep3() {
   const el = document.getElementById('step3Content');
   if (!el) return;
   const cs = state.candidates;
-  if (!cs.length) { el.innerHTML = '<p class="muted">候補が見つかりません。入力内容を確認してください。</p>'; return; }
+  if (!cs.length) {
+    el.innerHTML = '<p class="muted">候補が見つかりません。入力内容を確認してください。</p>';
+    return;
+  }
 
-  const ome = cs[0]?.ome?.toFixed(1) ?? '--';
-  const fromDrug = cs[0]?.from;
-  const okCount   = cs.filter(c => !c.hasHard && !c.hasSoft).length;
-  const warnCount = cs.filter(c => c.hasSoft && !c.hasHard).length;
-  const ciCount   = cs.filter(c => c.hasHard).length;
+  const ome     = cs[0]?.ome?.toFixed(1) ?? '--';
+  const from    = cs[0]?.from;
+
+  // 列ヘッダー（薬剤名）
+  const thCols = cs.map(c => {
+    const topColor = c.hasHard ? '#ef4444' : c.hasSoft ? '#f59e0b' : '#22c55e';
+    const ciCls   = c.hasHard ? ' ct-col-ci' : '';
+    return `<th class="ct-col${ciCls}" style="border-top:3px solid ${topColor}">
+      <div class="ct-drug-name">${escHtml(c.drug.group)}</div>
+      <span class="ct-route-tag">${routeTag(c.drug.routeType)}</span>
+    </th>`;
+  }).join('');
+
+  // 行データ生成
+  function row(labelHtml, cellsFn) {
+    const cells = cs.map(c => {
+      const ciCls = c.hasHard ? ' ct-col-ci' : '';
+      return `<td class="ct-col${ciCls}">${cellsFn(c)}</td>`;
+    }).join('');
+    return `<tr><th class="ct-rlabel" scope="row">${labelHtml}</th>${cells}</tr>`;
+  }
+
+  const tableHtml = `
+    <tr><th class="ct-rlabel-head"></th>${thCols}</tr>
+    ${row('推奨量',  c => fmtDoseCell(c))}
+    ${row('特長',    c => c.profile.pros.slice(0,2).map(p => `<div class="ct-pro">${escHtml(p)}</div>`).join(''))}
+    ${row('注意点',  c => c.profile.cons.slice(0,2).map(p => `<div class="ct-con">${escHtml(p)}</div>`).join(''))}
+    ${row('適合性',  c => statusCell(c))}
+    ${row('',        c => c.hasHard
+        ? `<button class="ct-sel-btn" disabled>選択不可</button>`
+        : `<button class="ct-sel-btn active" onclick="selectCandidate('${c.drug.id}')">選択 →</button>`
+    )}
+  `;
 
   el.innerHTML = `
     <div class="ome-banner">
       経口モルヒネ換算量: <strong>${ome} mg/日</strong>
-      <span class="ome-sub">（現行: ${escHtml(fromDrug?.name ?? '')}）</span>
+      <span class="ome-sub">現行: ${escHtml(from?.name ?? '')}</span>
     </div>
-    <div class="candidate-summary">
-      <span class="cs-ok">✓ ${okCount}件</span>
-      ${warnCount ? `<span class="cs-warn">⚠ ${warnCount}件</span>` : ''}
-      ${ciCount   ? `<span class="cs-ci">✕ ${ciCount}件（禁忌相当）</span>` : ''}
-    </div>
-    <div class="ccard-list">
-      ${cs.map(c => renderCandidateCard(c)).join('')}
+    <p class="ct-scroll-hint">← スクロールで全候補を比較 →</p>
+    <div class="ct-wrap">
+      <table class="ct-table">
+        ${tableHtml}
+      </table>
     </div>
     <p class="manual-ref">換算根拠: <a href="${SOURCE_URL}" target="_blank" rel="noopener noreferrer">聖隷三方原病院 症状緩和ガイド</a> (${DATA_VERSION})</p>
   `;
