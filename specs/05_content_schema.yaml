@@ -1,0 +1,92 @@
+version: 0.1.0
+source:
+  name: "聖隷三方原病院 症状緩和ガイド"
+  url: "https://www.seirei.or.jp/mikatahara/doc_kanwa/"
+  citation_required: true
+
+sections:
+  - id: "pain"
+    title: "Ⅰ 疼痛"
+    children:
+      - "persistent_pain"
+      - "breakthrough_pain"
+      - "neuropathic_pain"
+      - "opioid_somnolence"
+      - "route_change_when_oral_unavailable"
+      - "procedure_analgesia"
+      - "morphine_in_renal_failure"
+  - id: "gastro"
+    title: "Ⅱ 消化器症状"
+    children:
+      - "nausea_upper_obstruction"
+      - "nausea_lower_obstruction"
+      - "nausea_unspecified"
+      - "hiccup"
+      - "ascites_distension"
+      - "chemo_nausea"
+  - id: "respiratory"
+    title: "Ⅲ 呼吸器症状"
+    children:
+      - "dyspnea_irreversible_cancer"
+      - "cough"
+  - id: "psychiatric"
+    title: "Ⅳ 精神症状"
+    children:
+      - "delirium"
+      - "insomnia"
+  - id: "systemic"
+    title: "Ⅴ 全身症状"
+    children:
+      - "fever"
+      - "hypercalcemia"
+      - "fatigue_anorexia"
+  - id: "terminal"
+    title: "Ⅵ 死亡直前"
+    children:
+      - "last_days_sedation"
+      - "death_rattle"
+      - "no_iv_route_subcutaneous_hydration"
+  - id: "appendix"
+    title: "Ⅶ 付録"
+    children:
+      - "opioid_device_specs"
+      - "injectable_opioid_orders"
+      - "palliative_team_referral"
+      - "screening"
+      - "prognosis_prediction"
+
+content_item_schema:
+  required_fields:
+    - id
+    - title
+    - category
+    - assessment_items
+    - first_line_options
+    - alternative_options
+    - dosing_guidance
+    - contraindications
+    - cautions
+    - source_url
+    - source_updated_at
+    - app_updated_at
+  optional_fields:
+    - order_templates
+    - route_switch_logic
+    - conversion_rule_refs
+    - insurance_notice
+
+ui_bindings:
+  symptom_page:
+    tabs:
+      - "評価"
+      - "薬剤提案"
+      - "投与量"
+      - "注意点"
+      - "根拠"
+  calculators:
+    - "opioid_converter"
+    - "route_switch_timing"
+
+compliance_text:
+  mandatory_warning: "本アプリは意思決定支援です。最終的な診療判断は主治医が行ってください。"
+  insurance_notice: "保険適用は必ず各施設基準で確認してください。"

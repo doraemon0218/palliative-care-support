@@ -1,0 +1,76 @@
+version: 0.1.0
+updated_at: "2026-04-22"
+purpose: "Palliative care dosing and opioid conversion rules"
+
+input_schema:
+  patient_context:
+    - age_group
+    - weight_kg
+    - renal_function_stage
+    - hepatic_function_stage
+  symptom_context:
+    - symptom_type
+    - severity
+  medication_context:
+    - current_drug
+    - current_route
+    - total_daily_dose
+    - rescue_count
+
+safety_rules:
+  - id: SR-001
+    name: "Required assessment completion"
+    condition: "assessment.completed == false"
+    action: "block_recommendation"
+    message: "症状評価が未完了です。先に評価を完了してください。"
+  - id: SR-002
+    name: "Contraindication detection"
+    condition: "drug_selection.has_contraindication == true"
+    action: "hard_alert_and_reconfirm"
+    message: "禁忌の可能性があります。再確認が必要です。"
+  - id: SR-003
+    name: "Outlier conversion result"
+    condition: "conversion.result_outlier == true"
+    action: "hard_alert_and_reconfirm"
+    message: "換算結果が想定範囲外です。入力値を再確認してください。"
+
+opioid_conversion:
+  notes:
+    - "換算係数は院内承認テーブルを外部データとして管理する"
+    - "クロストレランスを考慮し減量係数を適用する"
+  formula:
+    equivalent_daily_dose: "input_daily_dose * conversion_factor"
+    adjusted_daily_dose: "equivalent_daily_dose * reduction_factor"
+    rescue_dose: "adjusted_daily_dose * rescue_ratio"
+  parameters:
+    reduction_factor_default: 0.75
+    rescue_ratio_default: 0.10
+  rounding:
+    method: "clinical_safe_rounding"
+    strategy: "round_down_if_borderline"
+
+route_switch_rules:
+  - id: RS-PO-SC
+    from: "oral"
+    to: "subcutaneous"
+    required_output:
+      - start_timing
+      - overlap_avoidance_instruction
+      - half_life_warning
+  - id: RS-TD-PO
+    from: "transdermal"
+    to: "oral"
+    required_output:
+      - start_timing
+      - residual_effect_warning
+      - reassessment_window
+
+audit_log:
+  required_fields:
+    - timestamp
+    - rule_version
+    - input_hash
+    - output_summary
+    - warning_flags
+    - reconfirmed_by_role
+  pii_policy: "no_direct_patient_identifier"
