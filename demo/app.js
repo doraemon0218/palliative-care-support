@@ -863,6 +863,7 @@ function init() {
       if (btn.classList.contains('disabled')) return;
       const t = btn.dataset.target;
       if (t === 'converter') { showPage('converter'); showStep(1); }
+      if (t === 'dyspnea')   { showPage('dyspnea');   showDStep(1); }
     });
   });
 
@@ -902,8 +903,620 @@ function init() {
   // Restart button
   document.getElementById('restartBtn')?.addEventListener('click', () => { showStep(1); });
 
+  initDyspneaWizard();
+
   showPage('home');
   showStep(1);
+}
+
+// ============================================================
+// DYSPNEA — SAFETY CHECKS DATA（聖隷三方原病院ガイド準拠）
+// ============================================================
+
+const DYSPNEA_SAFETY_CHECKS = [
+  {
+    id: 'altered_consciousness',
+    label: '意識レベル低下',
+    desc: '声かけへの反応が鈍い・開眼しない・GCS合計 ≤ 10 / 傾眠以上',
+    severity: 'hard',
+    impact: '経口薬の誤嚥リスク↑。オピオイドへの感受性が高まり過鎮静・呼吸抑制が生じやすい。ベンゾジアゼピン系は意識をさらに悪化させる危険あり。',
+    action: '経口投与は避け注射（皮下注/静注）へ切替。初回量を通常の50%以下に設定。ベンゾジアゼピン系は原則使用しない。',
+  },
+  {
+    id: 'airway_obstruction',
+    label: '上気道閉塞の疑い',
+    desc: '吸気性喘鳴（ストライダー）・頸部腫瘍圧迫・声門浮腫・気道内異物',
+    severity: 'stop',
+    impact: 'オピオイドの筋弛緩作用で上気道の緊張が低下し、閉塞が急速に悪化する危険があります。',
+    action: '薬物療法より先に気道確保・耳鼻咽喉科/外科コンサルトを優先。腫瘍圧迫・浮腫にはデキサメタゾン 4〜8 mg 静注が有効なことあり。',
+  },
+  {
+    id: 'hypotension',
+    label: '低血圧（SBP < 90 mmHg）',
+    desc: '収縮期血圧 90 mmHg 未満、または普段より 20 mmHg 以上低下',
+    severity: 'hard',
+    impact: 'オピオイドもベンゾジアゼピン系も血管拡張・心機能抑制により血圧をさらに低下させる。循環不全が急速に進行するリスク。',
+    action: '初回量を通常の50%以下に設定。投与後15〜30分ごとに血圧・意識を確認。必要に応じ輸液・昇圧薬を並行検討。',
+  },
+  {
+    id: 'co2_retention',
+    label: 'CO2貯留リスク（COPD・慢性呼吸不全）',
+    desc: 'COPD・慢性呼吸不全・PaCO2 > 45 mmHg の既往、または高炭酸ガス血症',
+    severity: 'hard',
+    impact: 'オピオイドが低酸素換気応答を抑制し、CO2ナルコーシス（高CO2血症→意識障害）を誘発する危険。ベンゾジアゼピン系も同様に危険。',
+    action: '通常量の25〜50%から開始。SpO2目標 88〜92%（過剰酸素は禁忌）。意識・呼吸数・SpO2を投与後30分毎に確認。ベンゾジアゼピン系は避ける。',
+  },
+  {
+    id: 'renal_severe',
+    label: '腎機能高度障害（eGFR < 30 / 透析）',
+    desc: 'eGFR < 30 mL/min/1.73m²、または維持透析中',
+    severity: 'hard',
+    impact: 'モルヒネの活性代謝物M6G（モルヒネ-6-グルクロニド）が蓄積し、遅発性の呼吸抑制・意識障害が生じる。半減期が著しく延長するため予測が困難。',
+    action: 'モルヒネは原則禁忌。フェンタニル注射またはヒドロモルフォン（経口/注射）を選択。オキシコドンも腎障害では蓄積リスクあり—要注意。',
+  },
+  {
+    id: 'renal_mild',
+    label: '腎機能低下（eGFR 30〜59）',
+    desc: 'eGFR 30〜59 mL/min/1.73m²（軽〜中等度低下）',
+    severity: 'soft',
+    impact: 'モルヒネのM6G蓄積リスクが通常より高い。過鎮静・呼吸抑制が遅れて出現する可能性あり。',
+    action: 'モルヒネ使用時は通常量の50〜75%から慎重開始。4〜6時間毎に意識・呼吸数を評価。ヒドロモルフォン・フェンタニルへの代替も検討。',
+  },
+  {
+    id: 'hepatic_severe',
+    label: '重篤な肝機能障害',
+    desc: 'Child-Pugh C / 重篤な肝不全（高度黄疸・肝性脳症・著明な凝固障害）',
+    severity: 'soft',
+    impact: 'ベンゾジアゼピン系薬剤（特に長時間作用型）の代謝が著しく遅延し、蓄積→過鎮静が生じやすい。オピオイドも代謝遅延あり。',
+    action: 'ジアゼパム・クロナゼパムなど長時間作用型BZDは避ける。ミダゾラム使用時は最少量から。オピオイドも少量・頻回評価で慎重に使用。',
+  },
+  {
+    id: 'on_opioid',
+    label: '現在オピオイド定期投与中',
+    desc: 'モルヒネ・オキシコドン・フェンタニル・ヒドロモルフォン等を定期使用中',
+    severity: 'info',
+    impact: 'オピオイド未使用者と同じ用量では過量になる可能性（耐性により逆に不十分なこともある）。新規開始ではなく「増量」が原則。',
+    action: '現行1日量の25〜30%を増量する。レスキュー頻度・量も見直す。換算が必要なら「換算」タブを参照。',
+  },
+  {
+    id: 'elderly',
+    label: '高齢者（75歳以上）',
+    desc: '75歳以上',
+    severity: 'soft',
+    impact: '腎・肝機能低下による薬物クリアランス低下、分布容積変化で蓄積しやすい。過鎮静・転倒・誤嚥リスクが高い。',
+    action: '初回は通常量の50〜75%から開始。投与間隔を延ばす（q6hなど）。効果・副作用を2〜4時間毎に評価し段階的に増量。',
+  },
+  {
+    id: 'hypoxia',
+    label: 'SpO2 < 90%（低酸素血症）',
+    desc: 'ルームエアでSpO2 90%未満が確認されている',
+    severity: 'info',
+    impact: '酸素療法の適応あり。ただし非低酸素性の呼吸困難（SpO2正常でも苦しい）では酸素は無効なことも多い。',
+    action: 'CO2貯留リスクなし: 2〜4 L/分（SpO2目標 90〜94%）。COPD合併: 1〜2 L/分（SpO2目標 88〜92%、過剰酸素でCO2ナルコーシス誘発に注意）。',
+  },
+];
+
+// ============================================================
+// DYSPNEA — STATE
+// ============================================================
+
+const dyspneaState = {
+  dstep: 1,
+  nrs: null,
+  canOral: null,
+  hasAnxiety: false,
+  onOpioid: false,
+};
+
+// ============================================================
+// DYSPNEA — DRUG RECOMMENDATION ENGINE
+// ============================================================
+
+function buildDyspneaRecommendation(flags, nrs, canOral, hasAnxiety, onOpioid) {
+  if (flags.has('airway_obstruction')) {
+    return { blocked: true, recs: [], hardWarnings: [], softWarnings: [] };
+  }
+
+  const recs = [];
+  const hardWarnings = [];
+  const softWarnings = [];
+
+  const elderly       = flags.has('elderly');
+  const co2           = flags.has('co2_retention');
+  const hypotension   = flags.has('hypotension');
+  const consciousness = flags.has('altered_consciousness');
+  const renalSevere   = flags.has('renal_severe');
+  const renalMild     = flags.has('renal_mild');
+  const hepatic       = flags.has('hepatic_severe');
+  const hypoxia       = flags.has('hypoxia');
+
+  const useOral = canOral && !consciousness;
+  const isModified = elderly || co2 || hypotension || renalMild;
+
+  // ---- Primary: Opioid ----
+  if (onOpioid) {
+    recs.push({
+      level: 'primary', label: 'オピオイド増量（現行薬継続）',
+      drug: '現行オピオイドを 25〜30% 増量',
+      dose: '現行1日量 × 1.25〜1.30',
+      doseNote: 'レスキュー（定期量の1/6）の上限回数・間隔も見直してください。投与経路変更が必要な場合は「換算」タブをご利用ください。',
+      brands: '—（現行薬を継続）',
+      note: 'オピオイド使用中の呼吸困難には新規追加ではなく現行量の増量が原則（聖隷ガイド準拠）。',
+    });
+
+  } else if (renalSevere) {
+    // Morphine contraindicated
+    hardWarnings.push({ text: '腎機能高度障害（eGFR < 30）のため、モルヒネはM6G蓄積による遅発性呼吸抑制のリスクがあり使用しないでください。' });
+    if (useOral) {
+      recs.push({
+        level: 'primary', label: '第一選択（腎障害代替薬）',
+        drug: 'ヒドロモルフォン速放製剤 経口',
+        dose: elderly ? '0.5〜1 mg/回 q4〜6h（高齢—少量開始）'
+            : co2    ? '0.5〜1 mg/回 q6h（CO2貯留—極少量）'
+            : '1〜2 mg/回 q4h',
+        doseNote: '翌日以降の効果を評価し定期量を設定。レスキューは定期量の1/6を目安に。',
+        brands: 'ナルラピド® 1 mg/錠・2 mg/錠',
+        note: '腎機能高度障害でも活性代謝物の蓄積が少なく安全。緩和領域での呼吸困難に有効。',
+      });
+    } else {
+      recs.push({
+        level: 'primary', label: '第一選択（腎障害・経口不能）',
+        drug: 'フェンタニル 持続皮下注',
+        dose: elderly || hypotension ? '6.25〜12.5 μg/時 持続'
+            : co2                   ? '6.25〜12.5 μg/時 持続（CO2貯留—極少量）'
+            : '12.5〜25 μg/時 持続',
+        doseNote: 'レスキューは1時間分相当（μg/時 × 1）をボーラスで。',
+        brands: 'フェンタニル注射液®（各社）',
+        note: '腎排泄への依存が少なく、腎機能高度障害でも安全に使用できます。',
+      });
+    }
+
+  } else {
+    // Morphine available
+    if (useOral) {
+      let dose, doseNote;
+      if (co2 && elderly) {
+        dose = '1 mg/回 q6h（CO2貯留＋高齢—極少量）';
+        doseNote = 'SpO2・意識・呼吸数を投与30分後に必ず確認。効果判定後に慎重増量。目標NRS低下と過鎮静のバランスを頻回評価。';
+      } else if (co2) {
+        dose = '1〜2.5 mg/回 q4〜6h（CO2貯留あり）';
+        doseNote = 'CO2ナルコーシスに注意。投与後30分でSpO2・呼吸数・意識を確認。SpO2目標88〜92%。';
+      } else if (hypotension && elderly) {
+        dose = '1〜2.5 mg/回 q4〜6h（低血圧＋高齢—減量）';
+        doseNote = '投与後15〜30分で血圧・意識を確認。必要時のみ追加投与。';
+      } else if (hypotension) {
+        dose = '1〜2.5 mg/回 q4〜6h（低血圧あり—減量）';
+        doseNote = '投与後15〜30分で血圧を確認。';
+      } else if (elderly) {
+        dose = '2.5 mg/回 q4〜6h（高齢者—少量開始）';
+        doseNote = '効果不十分なら2〜4時間後に2.5 mgを追加（レスキュー）。翌日以降に定期量を設定。';
+      } else {
+        dose = '2.5〜5 mg/回 q4h（初回は2.5 mg推奨）';
+        doseNote = '効果不十分なら2〜4時間後に同量をレスキュー投与。翌日以降に定期量・SR製剤を検討。';
+      }
+      recs.push({
+        level: isModified ? 'caution' : 'primary',
+        label: isModified ? '第一選択（要注意）' : '第一選択',
+        drug: 'モルヒネ速放製剤 経口',
+        dose, doseNote,
+        brands: 'オプソ® 2.5 mg/包・5 mg/包',
+        note: '緩和ケアにおける呼吸困難の標準治療。エビデンス最多（聖隷三方原病院ガイド準拠）。',
+      });
+    } else {
+      let dose, doseNote;
+      if (co2 && elderly) {
+        dose = '1 mg/日 持続皮下注';
+        doseNote = 'CO2貯留＋高齢のため極少量から。SpO2・意識・呼吸数を30分毎に確認。';
+      } else if (co2) {
+        dose = '1〜2 mg/日 持続皮下注';
+        doseNote = 'CO2ナルコーシスに注意。SpO2目標88〜92%。呼吸数・意識を頻回確認。';
+      } else if (hypotension && elderly) {
+        dose = '1〜2.5 mg/日 持続皮下注（低血圧＋高齢）';
+        doseNote = '投与後15〜30分で血圧・SpO2を確認。';
+      } else if (hypotension) {
+        dose = '1〜2.5 mg/日 持続皮下注（低血圧あり）';
+        doseNote = '投与後15〜30分で血圧を確認。';
+      } else if (elderly) {
+        dose = '2.5 mg/日 持続皮下注';
+        doseNote = 'レスキューは1時間分相当（0.1 mg/時相当）をボーラスで。';
+      } else {
+        dose = '2.5〜5 mg/日 持続皮下注';
+        doseNote: '1時間分をレスキューに使用可（例：5 mg/日 → 0.2 mg/時 → 0.2 mgボーラス）。';
+        doseNote = 'レスキューは1時間分相当をボーラスで。例: 5 mg/日 = 0.2 mg/時 → レスキュー 0.2 mg。';
+      }
+      recs.push({
+        level: isModified ? 'caution' : 'primary',
+        label: isModified ? '第一選択（要注意）' : '第一選択',
+        drug: 'モルヒネ注射 持続皮下注',
+        dose, doseNote,
+        brands: 'モルヒネ塩酸塩注® 10 mg/1 mL（各社）',
+        note: '経口摂取不能例・急速なコントロールが必要な場合。',
+      });
+    }
+
+    if (renalMild) {
+      softWarnings.push({ text: '腎機能低下（eGFR 30〜59）：モルヒネのM6G代謝物が蓄積しやすいため、通常量の50〜75%から開始し、4〜6時間毎に過鎮静・呼吸変化を評価してください。' });
+    }
+  }
+
+  // ---- Adjuvant: Benzodiazepine for anxiety ----
+  if (hasAnxiety) {
+    const bzContra = consciousness || co2;
+    if (bzContra) {
+      hardWarnings.push({ text: 'ベンゾジアゼピン系は意識レベル低下またはCO2貯留リスクがある場合は原則禁忌です。不安には非薬物療法（声かけ・顔への送風・体位調整）を優先してください。' });
+    } else if (useOral) {
+      recs.push({
+        level: hepatic || hypotension ? 'caution' : 'adjuvant',
+        label: '不安への補助薬',
+        drug: 'ロラゼパム 舌下/経口',
+        dose: elderly || hepatic ? '0.5 mg 舌下 q4〜6h（必要時）—最小量'
+            : hypotension        ? '0.5 mg 舌下（低血圧に注意）'
+            : '0.5〜1 mg 舌下 q4〜6h（必要時）',
+        doseNote: '舌下投与で15〜30分で吸収。経口服薬可能な場合は内服でも可。',
+        brands: 'ワイパックス® 0.5 mg/錠・1 mg/錠',
+        note: '不安・恐怖感が強い呼吸困難への補助。オピオイドとの相乗効果で症状緩和。',
+      });
+    } else {
+      recs.push({
+        level: hepatic || hypotension ? 'caution' : 'adjuvant',
+        label: '不安への補助薬（注射）',
+        drug: 'ミダゾラム 皮下注/静注',
+        dose: elderly || hepatic ? '0.5〜1 mg/回 皮下注 q4〜6h（必要時）—最小量'
+            : hypotension        ? '0.5〜1 mg/回 皮下注（低血圧に注意）'
+            : '1〜2 mg/回 皮下注 q4h（必要時）\nまたは5〜10 mg/日 持続皮下注',
+        doseNote: '効果発現10〜15分。必要時投与を基本とし、反復が多い場合は持続注射へ移行を検討。',
+        brands: 'ドルミカム® 10 mg/2 mL',
+        note: '経口不能例・強い不安への補助療法。少量から開始し過鎮静に注意。',
+      });
+    }
+  }
+
+  // ---- Support: Oxygen for hypoxia ----
+  if (hypoxia) {
+    recs.push({
+      level: 'support', label: '酸素療法（低酸素血症）',
+      drug: '経鼻カニューラ / 簡易酸素マスク',
+      dose: co2 ? '1〜2 L/分（SpO2目標 88〜92%）'
+               : '2〜4 L/分（SpO2目標 90〜94%）',
+      doseNote: co2
+        ? 'COPD/CO2貯留リスクあり：過剰酸素で呼吸ドライブが抑制されCO2ナルコーシスを誘発します。低流量・低目標を厳守。'
+        : '注意：SpO2が正常でも呼吸困難が強い場合（非低酸素性）には酸素は無効なことが多いです。症状改善を必ず確認。',
+      brands: '—',
+      note: 'SpO2 < 90%の低酸素血症あり。原因疾患（肺炎・胸水・肺塞栓など）の評価・治療も並行検討。',
+    });
+  }
+
+  // ---- NRS-based severity comment ----
+  if (!onOpioid && nrs !== null) {
+    if (nrs >= 7) {
+      hardWarnings.push({ text: `NRS ${nrs}/10 と高値です。初回投与後30〜60分で再評価し、効果不十分なら即時レスキューを検討してください。` });
+    } else if (nrs >= 4) {
+      softWarnings.push({ text: `NRS ${nrs}/10 の中等度以上です。投与後1〜2時間で症状を再評価し、目標 NRS ≤ 3 を目指してください。` });
+    }
+  }
+
+  return { blocked: false, recs, hardWarnings, softWarnings };
+}
+
+// ============================================================
+// DYSPNEA — WIZARD STEP CONTROL
+// ============================================================
+
+function showDStep(n) {
+  dyspneaState.dstep = n;
+  document.querySelectorAll('.dstep-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('dstep' + n)?.classList.add('active');
+  document.querySelectorAll('.dstepper-item').forEach(item => {
+    const s = Number(item.dataset.dstep);
+    item.classList.toggle('done',    s < n);
+    item.classList.toggle('current', s === n);
+    item.classList.toggle('pending', s > n);
+  });
+  updateDWizardNav();
+  document.getElementById('dyspneaPage')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function updateDWizardNav() {
+  const prev = document.getElementById('dprevBtn');
+  const next = document.getElementById('dnextBtn');
+  if (!prev || !next) return;
+  prev.style.display = dyspneaState.dstep > 1 ? '' : 'none';
+  next.style.display = dyspneaState.dstep < 4 ? '' : 'none';
+  if (dyspneaState.dstep === 2) next.textContent = '推奨薬剤を確認 →';
+  else if (dyspneaState.dstep === 3) next.textContent = 'モニタリングへ →';
+  else next.textContent = '次へ →';
+}
+
+function syncDStep2() {
+  const oralRadio    = document.querySelector('input[name="dysp_oral"]:checked');
+  const anxietyRadio = document.querySelector('input[name="dysp_anxiety"]:checked');
+  const opioidRadio  = document.querySelector('input[name="dysp_onopioid"]:checked');
+  dyspneaState.canOral    = oralRadio    ? oralRadio.value === 'yes'    : null;
+  dyspneaState.hasAnxiety = anxietyRadio ? anxietyRadio.value === 'yes' : false;
+  dyspneaState.onOpioid   = opioidRadio  ? opioidRadio.value === 'yes'  : false;
+}
+
+function validateDStep(n) {
+  if (n === 2) {
+    if (dyspneaState.nrs === null)   { toast('呼吸困難の強さ（NRS）を選択してください'); return false; }
+    if (dyspneaState.canOral === null){ toast('経口投与の可否を選択してください'); return false; }
+  }
+  return true;
+}
+
+// ============================================================
+// DYSPNEA — SAFETY CHECKLIST RENDER
+// ============================================================
+
+function getDyspneaFlags() {
+  const flags = new Set();
+  DYSPNEA_SAFETY_CHECKS.forEach(c => {
+    if (document.getElementById('sc_' + c.id)?.checked) flags.add(c.id);
+  });
+  return flags;
+}
+
+function updateSafetyFlagSummary() {
+  const flags      = getDyspneaFlags();
+  const summaryEl  = document.getElementById('safetyFlagSummary');
+  const stopBanner = document.getElementById('stopBanner');
+
+  if (stopBanner) stopBanner.classList.toggle('visible', flags.has('airway_obstruction'));
+
+  if (!summaryEl) return;
+  if (flags.size === 0) { summaryEl.style.display = 'none'; return; }
+
+  const activeChecks = DYSPNEA_SAFETY_CHECKS.filter(c => flags.has(c.id));
+  const chips = activeChecks.map(c =>
+    `<span class="aflag aflag-${c.severity === 'stop' ? 'stop' : c.severity}">${escHtml(c.label)}</span>`
+  ).join('');
+  summaryEl.innerHTML = `<span style="font-size:0.78rem;color:#6b7280;margin-right:6px;">選択中:</span>${chips}`;
+  summaryEl.style.display = 'block';
+}
+
+function renderDSafetyChecklist() {
+  const el = document.getElementById('safetyChecklist');
+  if (!el) return;
+  el.innerHTML = '';
+
+  DYSPNEA_SAFETY_CHECKS.forEach(check => {
+    const div = document.createElement('div');
+    div.className = `safety-item sev-${check.severity}`;
+    div.dataset.checkId = check.id;
+
+    div.innerHTML = `
+      <div class="safety-item-header">
+        <input type="checkbox" id="sc_${check.id}" data-check-id="${escHtml(check.id)}">
+        <div class="safety-item-text">
+          <div class="safety-item-label">${escHtml(check.label)}</div>
+          <div class="safety-item-desc">${escHtml(check.desc)}</div>
+        </div>
+      </div>
+      <div class="safety-impact">
+        <div class="impact-text"><strong>影響:</strong> ${escHtml(check.impact)}</div>
+        <div class="action-text"><strong>対処:</strong> ${escHtml(check.action)}</div>
+      </div>
+    `;
+
+    const cb = div.querySelector('input[type="checkbox"]');
+    function toggle() {
+      div.classList.toggle('active', cb.checked);
+      updateSafetyFlagSummary();
+    }
+    cb.addEventListener('change', toggle);
+    div.addEventListener('click', e => {
+      if (e.target !== cb) { cb.checked = !cb.checked; toggle(); }
+    });
+
+    el.appendChild(div);
+  });
+}
+
+// ============================================================
+// DYSPNEA — STEP 3 RENDER（推奨薬剤）
+// ============================================================
+
+function renderDStep3() {
+  const flags    = getDyspneaFlags();
+  const result   = buildDyspneaRecommendation(flags, dyspneaState.nrs, dyspneaState.canOral, dyspneaState.hasAnxiety, dyspneaState.onOpioid);
+  const el       = document.getElementById('dstep3Content');
+  if (!el) return;
+
+  state.auditLog.push({
+    ts: new Date().toISOString(), action: 'dyspnea_recommendation',
+    flags: Array.from(flags), nrs: dyspneaState.nrs,
+    canOral: dyspneaState.canOral, hasAnxiety: dyspneaState.hasAnxiety,
+    onOpioid: dyspneaState.onOpioid, recCount: result.recs.length,
+  });
+
+  if (result.blocked) {
+    el.innerHTML = `
+      <div style="padding:12px 14px 0">
+        <div class="stop-block">
+          <div class="stop-block-title">⛔ 上気道閉塞が疑われます</div>
+          <p>薬物療法より先に気道の安全確保・専門科（耳鼻咽喉科/外科）へのコンサルトを優先してください。</p>
+          <p style="margin-top:8px">腫瘍浮腫が原因の場合はデキサメタゾン 4〜8 mg 静注が有効なことがあります。</p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  // Active flags banner
+  const activeChecks = DYSPNEA_SAFETY_CHECKS.filter(c => flags.has(c.id));
+  const flagsBanner = activeChecks.length ? `
+    <div class="active-flags-wrap">
+      <span class="active-flags-label">確認済みリスク:</span>
+      ${activeChecks.map(c => `<span class="aflag aflag-${c.severity === 'stop' ? 'stop' : c.severity}">${escHtml(c.label)}</span>`).join('')}
+    </div>` : '';
+
+  const warningsHtml = [
+    ...result.hardWarnings.map(w => `<div class="alert-item alert-hard">🚨 ${escHtml(w.text)}</div>`),
+    ...result.softWarnings.map(w => `<div class="alert-item alert-soft">⚠️ ${escHtml(w.text)}</div>`),
+  ].join('');
+
+  const cardHtml = result.recs.map(rec => `
+    <div class="drec-card ${escHtml(rec.level)}">
+      <div class="drec-label">${escHtml(rec.label)}</div>
+      <div class="drec-drug">${escHtml(rec.drug)}</div>
+      <div class="drec-dose">📋 ${escHtml(rec.dose)}</div>
+      ${rec.doseNote ? `<div class="drec-dose-note">${escHtml(rec.doseNote)}</div>` : ''}
+      ${rec.brands && rec.brands !== '—' ? `<div class="drec-brands">商品例: ${escHtml(rec.brands)}</div>` : ''}
+      <div class="drec-note">${escHtml(rec.note)}</div>
+    </div>`).join('');
+
+  el.innerHTML = `
+    <div style="padding:12px 14px 0">
+      ${flagsBanner}
+      ${warningsHtml ? `<div class="warnings-wrap" style="margin-bottom:10px">${warningsHtml}</div>` : ''}
+      <div class="drec-list">${cardHtml}</div>
+      <p class="manual-ref" style="margin-top:12px">
+        根拠: <a href="${SOURCE_URL}" target="_blank" rel="noopener noreferrer">聖隷三方原病院 症状緩和ガイド</a> / ${DATA_VERSION}
+      </p>
+    </div>`;
+}
+
+// ============================================================
+// DYSPNEA — STEP 4 RENDER（モニタリング）
+// ============================================================
+
+function renderDStep4() {
+  const flags = getDyspneaFlags();
+  const el    = document.getElementById('dstep4Content');
+  if (!el) return;
+
+  const monitorItems = [
+    { id: 'rr',       text: 'SpO2・呼吸数を投与後30〜60分で確認', priority: true },
+    { id: 'cs',       text: '意識レベル（声かけへの反応）を確認', priority: true },
+    { id: 'bp',       text: '血圧を投与後15〜30分で確認', priority: flags.has('hypotension') || flags.has('elderly') },
+    { id: 'nrs',      text: 'NRS（呼吸困難の強さ）を1〜2時間後に再評価', priority: false },
+    { id: 'sed',      text: '過鎮静（強い眠気・傾眠・呼びかけに反応鈍い）がないか確認', priority: true },
+    { id: 'rr8',      text: '呼吸回数 ≤ 8回/分 → 直ちに主治医に報告', priority: true },
+    { id: 'rescue',   text: 'レスキュー3回後もNRS改善なし → 主治医に相談', priority: false },
+    { id: 'co2check', text: 'CO2貯留悪化（眠気・頭痛・顔面紅潮）→ 主治医に即報告', priority: flags.has('co2_retention') },
+  ].filter(item => item.priority || true); // show all; priority adds styling
+
+  const monitorHtml = monitorItems.map(item => `
+    <div class="monitor-item${item.priority ? ' priority' : ''}">
+      <input type="checkbox" id="mon_${item.id}" type="checkbox">
+      <div class="monitor-text">
+        ${escHtml(item.text)}
+        ${item.priority ? '<span class="monitor-priority-tag">必須</span>' : ''}
+      </div>
+    </div>`).join('');
+
+  const escalationItems = [
+    '呼吸回数 ≤ 8回/分',
+    'SpO2の急激な低下（ベースラインから5%以上低下）',
+    '強い眠気・呼びかけに対する反応不良',
+    'NRS > 7 がレスキュー3回後も改善しない',
+    flags.has('hypotension') ? '収縮期血圧 < 80 mmHg' : null,
+    flags.has('co2_retention') ? 'CO2貯留悪化の徴候（眠気・頭痛・発汗・顔面紅潮）' : null,
+  ].filter(Boolean);
+
+  const nonPharmItems = [
+    '声かけ・傍にいること（孤独感・不安の軽減）',
+    '扇風機やうちわで顔に風を当てる（三叉神経刺激で呼吸困難感が軽減）',
+    '上体挙上（45度以上、または患者が最も楽な体位）',
+    '室内換気・温度管理（適度な気流をつくる）',
+    '呼吸法の指導（鼻から吸って口からゆっくり吐く）',
+    '恐怖感が強い場合はそばにいて現状を丁寧に説明する',
+  ];
+
+  el.innerHTML = `
+    <div style="padding:12px 14px 0">
+      <div class="result-section">
+        <h3>投与後モニタリング（チェックリスト）</h3>
+        <div class="monitor-list">${monitorHtml}</div>
+      </div>
+
+      <div class="result-section">
+        <h3>🚨 エスカレーション基準（主治医へ即時報告）</h3>
+        <ul class="escalation-list">
+          ${escalationItems.map(e => `<li>${escHtml(e)}</li>`).join('')}
+        </ul>
+      </div>
+
+      <div class="result-section">
+        <h3>💨 非薬物療法（並行して実施）</h3>
+        <ul class="nonpharm-list">
+          ${nonPharmItems.map(e => `<li>${escHtml(e)}</li>`).join('')}
+        </ul>
+      </div>
+
+      <p class="manual-ref">
+        根拠: <a href="${SOURCE_URL}" target="_blank" rel="noopener noreferrer">聖隷三方原病院 症状緩和ガイド</a> / ${DATA_VERSION}
+      </p>
+    </div>`;
+}
+
+// ============================================================
+// DYSPNEA — INIT
+// ============================================================
+
+function initDyspneaWizard() {
+  renderDSafetyChecklist();
+
+  // NRS buttons
+  const nrsEl = document.getElementById('nrsButtons');
+  if (nrsEl) {
+    const nrsLabels = [
+      '0 — 症状なし', '1 — ごく軽度', '2 — 軽度', '3 — 軽度',
+      '4 — 中等度', '5 — 中等度', '6 — 中等度',
+      '7 — 高度', '8 — 高度', '9 — 非常に高度', '10 — 最大の苦しさ',
+    ];
+    for (let i = 0; i <= 10; i++) {
+      const btn = document.createElement('button');
+      const colorCls = i <= 3 ? 'nrs-ok' : i <= 6 ? 'nrs-warn' : 'nrs-danger';
+      btn.className = `nrs-btn ${colorCls}`;
+      btn.dataset.nrs = i;
+      btn.textContent = i;
+      btn.type = 'button';
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.nrs-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        dyspneaState.nrs = i;
+        const labelEl = document.getElementById('nrsLabel');
+        if (labelEl) labelEl.textContent = nrsLabels[i] ?? '';
+      });
+      nrsEl.appendChild(btn);
+    }
+  }
+
+  // Wizard nav
+  document.getElementById('dprevBtn')?.addEventListener('click', () => {
+    if (dyspneaState.dstep > 1) showDStep(dyspneaState.dstep - 1);
+  });
+  document.getElementById('dnextBtn')?.addEventListener('click', () => {
+    if (dyspneaState.dstep === 2) syncDStep2();
+    if (!validateDStep(dyspneaState.dstep)) return;
+    const next = dyspneaState.dstep + 1;
+    showDStep(next);
+    if (next === 3) renderDStep3();
+    if (next === 4) renderDStep4();
+  });
+
+  // Restart
+  document.getElementById('dyspneaRestartBtn')?.addEventListener('click', () => {
+    dyspneaState.nrs = null;
+    dyspneaState.canOral = null;
+    dyspneaState.hasAnxiety = false;
+    dyspneaState.onOpioid = false;
+    DYSPNEA_SAFETY_CHECKS.forEach(c => {
+      const cb = document.getElementById('sc_' + c.id);
+      if (cb) cb.checked = false;
+      document.querySelector(`[data-check-id="${c.id}"]`)?.classList.remove('active');
+    });
+    document.querySelectorAll('.nrs-btn').forEach(b => b.classList.remove('selected'));
+    const lbl = document.getElementById('nrsLabel');
+    if (lbl) lbl.textContent = '';
+    document.querySelectorAll('input[name="dysp_anxiety"]').forEach(r => { r.checked = r.value === 'no'; });
+    document.querySelectorAll('input[name="dysp_onopioid"]').forEach(r => { r.checked = r.value === 'no'; });
+    document.querySelectorAll('input[name="dysp_oral"]').forEach(r => { r.checked = false; });
+    updateSafetyFlagSummary();
+    showDStep(1);
+  });
+
+  showDStep(1);
 }
 
 document.addEventListener('DOMContentLoaded', init);

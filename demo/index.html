@@ -24,6 +24,7 @@
     <nav class="tab-nav">
       <button class="tab-btn active" data-page="home">ホーム</button>
       <button class="tab-btn" data-page="converter">換算</button>
+      <button class="tab-btn" data-page="dyspnea">呼吸困難</button>
       <button class="tab-btn" data-page="audit">ログ</button>
     </nav>
 
@@ -44,10 +45,9 @@
                 <span class="s-icon">🔄</span>
                 <span>投与経路変更</span>
               </button>
-              <button class="symptom-btn disabled">
+              <button class="symptom-btn primary" data-target="dyspnea">
                 <span class="s-icon">😮‍💨</span>
                 <span>呼吸困難</span>
-                <span class="wip">準備中</span>
               </button>
               <button class="symptom-btn disabled">
                 <span class="s-icon">🤢</span>
@@ -210,6 +210,112 @@
         <div class="wizard-nav">
           <button id="prevBtn" class="btn-secondary" style="display:none;">← 戻る</button>
           <button id="nextBtn" class="btn-primary">次へ →</button>
+        </div>
+
+      </section>
+
+      <!-- ========== DYSPNEA ========== -->
+      <section id="dyspneaPage" class="page">
+
+        <!-- Stepper -->
+        <div class="stepper">
+          <div class="dstepper-item current" data-dstep="1">
+            <div class="sdot">1</div><div class="slabel">安全確認</div>
+          </div>
+          <div class="sline"></div>
+          <div class="dstepper-item pending" data-dstep="2">
+            <div class="sdot">2</div><div class="slabel">症状評価</div>
+          </div>
+          <div class="sline"></div>
+          <div class="dstepper-item pending" data-dstep="3">
+            <div class="sdot">3</div><div class="slabel">推奨薬剤</div>
+          </div>
+          <div class="sline"></div>
+          <div class="dstepper-item pending" data-dstep="4">
+            <div class="sdot">4</div><div class="slabel">確認</div>
+          </div>
+        </div>
+
+        <!-- D-STEP 1: Safety checks -->
+        <div id="dstep1" class="dstep-panel active">
+          <div class="card">
+            <h3>安全性チェック <span class="step-num">1 / 4</span></h3>
+            <p class="field-hint">患者の状態に該当するものをすべて選択してください。なければそのまま「次へ」。</p>
+            <div id="stopBanner" class="stop-banner">
+              ⛔ 上気道閉塞が疑われます。気道確保・専門科コンサルトを優先し、薬物療法はその後に検討してください。
+            </div>
+            <div id="safetyChecklist" class="safety-checklist"></div>
+            <div id="safetyFlagSummary" class="safety-flag-summary" style="display:none;"></div>
+          </div>
+        </div>
+
+        <!-- D-STEP 2: Symptom assessment -->
+        <div id="dstep2" class="dstep-panel">
+          <div class="card">
+            <h3>症状評価 <span class="step-num">2 / 4</span></h3>
+            <div class="form-stack">
+
+              <label>呼吸困難の強さ（NRS 0〜10）<span class="req">*</span></label>
+              <div id="nrsButtons" class="nrs-row"></div>
+              <div id="nrsLabel" class="nrs-label"></div>
+
+              <label style="margin-top:8px">経口投与は可能ですか？<span class="req">*</span></label>
+              <div class="radio-group">
+                <label class="radio-item">
+                  <input type="radio" name="dysp_oral" value="yes">
+                  <span>可能（嚥下できる）</span>
+                </label>
+                <label class="radio-item">
+                  <input type="radio" name="dysp_oral" value="no">
+                  <span>困難（嚥下障害・意識低下・拒否など）</span>
+                </label>
+              </div>
+
+              <label style="margin-top:8px">不安・恐怖感が強く関与していますか？</label>
+              <div class="radio-group">
+                <label class="radio-item">
+                  <input type="radio" name="dysp_anxiety" value="yes">
+                  <span>あり（強い恐怖・パニック様の訴え）</span>
+                </label>
+                <label class="radio-item">
+                  <input type="radio" name="dysp_anxiety" value="no" checked>
+                  <span>なし / 不明</span>
+                </label>
+              </div>
+
+              <label style="margin-top:8px">現在オピオイドを定期投与中ですか？</label>
+              <div class="radio-group">
+                <label class="radio-item">
+                  <input type="radio" name="dysp_onopioid" value="yes">
+                  <span>はい（モルヒネ・オキシコドン・フェンタニルなど）</span>
+                </label>
+                <label class="radio-item">
+                  <input type="radio" name="dysp_onopioid" value="no" checked>
+                  <span>いいえ（オピオイド未使用）</span>
+                </label>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- D-STEP 3: Recommendations (rendered by JS) -->
+        <div id="dstep3" class="dstep-panel">
+          <div id="dstep3Content"><p class="muted" style="padding:14px">評価を完了してください。</p></div>
+        </div>
+
+        <!-- D-STEP 4: Monitoring (rendered by JS) -->
+        <div id="dstep4" class="dstep-panel">
+          <div id="dstep4Content"></div>
+          <div style="padding:0 14px">
+            <button id="dyspneaRestartBtn" class="btn-secondary" style="width:100%;margin-top:14px;">最初から入力し直す</button>
+          </div>
+        </div>
+
+        <!-- Wizard nav -->
+        <div class="wizard-nav">
+          <button id="dprevBtn" class="btn-secondary" style="display:none;">← 戻る</button>
+          <button id="dnextBtn" class="btn-primary">次へ →</button>
         </div>
 
       </section>

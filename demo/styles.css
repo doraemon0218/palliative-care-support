@@ -532,3 +532,174 @@ code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.82rem
   .wizard-nav { padding: 16px 20px 0; }
   .sline { width: 48px; }
 }
+
+/* ===== DYSPNEA WIZARD ===== */
+.dstep-panel { display: none; padding: 12px 14px 0; }
+.dstep-panel.active { display: block; }
+
+/* Safety check items */
+.safety-checklist { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+
+.safety-item {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--bd-strong);
+  border-radius: var(--r-sm);
+  background: #fff;
+  cursor: pointer;
+  transition: background .15s;
+  overflow: hidden;
+  user-select: none;
+}
+.safety-item.sev-stop { border-left-color: var(--danger); }
+.safety-item.sev-hard { border-left-color: #f97316; }
+.safety-item.sev-soft { border-left-color: #f59e0b; }
+.safety-item.sev-info { border-left-color: #60a5fa; }
+
+.safety-item.active { background: #fffbf5; }
+.safety-item.active.sev-stop { background: #fff5f5; }
+
+.safety-item-header {
+  display: flex; align-items: flex-start;
+  gap: 10px; padding: 10px 12px;
+}
+.safety-item input[type="checkbox"] {
+  width: 18px; height: 18px; flex-shrink: 0;
+  margin-top: 2px; cursor: pointer;
+}
+.safety-item-label { font-weight: 600; font-size: 0.88rem; }
+.safety-item-desc  { font-size: 0.76rem; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
+.safety-impact {
+  display: none;
+  padding: 0 12px 10px 40px;
+  flex-direction: column; gap: 6px;
+}
+.safety-item.active .safety-impact { display: flex; }
+
+.impact-text {
+  font-size: 0.8rem; color: #374151; line-height: 1.5;
+  background: #fef9ec; border-radius: var(--r-sm); padding: 6px 8px;
+}
+.action-text {
+  font-size: 0.8rem; color: #14532d; line-height: 1.5;
+  background: var(--ok-bg); border-radius: var(--r-sm); padding: 6px 8px;
+}
+
+.stop-banner {
+  display: none; margin-top: 10px;
+  background: var(--danger-bg); border: 2px solid var(--danger);
+  border-radius: var(--r-sm); padding: 10px 12px;
+  color: var(--danger); font-weight: 700; font-size: 0.88rem; line-height: 1.5;
+}
+.stop-banner.visible { display: block; }
+
+.safety-flag-summary {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: 4px; margin-top: 10px;
+  padding: 8px 10px; background: #f8fafc;
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+}
+
+.aflag {
+  font-size: 0.71rem; font-weight: 700;
+  padding: 2px 8px; border-radius: 10px; white-space: nowrap;
+}
+.aflag-stop { background: var(--danger-bg); color: var(--danger); }
+.aflag-hard { background: #fff7ed;          color: #c2410c; }
+.aflag-soft { background: var(--warn-bg);   color: var(--warn); }
+.aflag-info { background: var(--accent-lt); color: var(--accent); }
+
+/* NRS scale */
+.nrs-row {
+  display: flex; gap: 3px; flex-wrap: nowrap;
+  margin-top: 4px; overflow-x: auto; padding-bottom: 4px;
+}
+.nrs-btn {
+  min-width: 32px; height: 40px; flex-shrink: 0;
+  border: 2px solid var(--bd-strong); border-radius: var(--r-sm);
+  background: #fff; color: var(--text);
+  font-size: 0.88rem; font-weight: 700;
+  cursor: pointer; transition: background .1s, border-color .1s;
+}
+.nrs-btn.nrs-ok     { border-color: #86efac; color: #15803d; }
+.nrs-btn.nrs-warn   { border-color: #fcd34d; color: #92400e; }
+.nrs-btn.nrs-danger { border-color: #fca5a5; color: var(--danger); }
+.nrs-btn.selected.nrs-ok     { background: #22c55e; color: #fff; border-color: #22c55e; }
+.nrs-btn.selected.nrs-warn   { background: #f59e0b; color: #fff; border-color: #f59e0b; }
+.nrs-btn.selected.nrs-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+.nrs-label { font-size: 0.8rem; color: #374151; min-height: 1.4em; margin-top: 4px; font-weight: 600; }
+
+/* Radio group */
+.radio-group { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.radio-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 9px 11px; border: 1px solid var(--border);
+  border-radius: var(--r-sm); background: #fff; cursor: pointer;
+  font-size: 0.85rem; font-weight: 400; line-height: 1.4;
+  transition: border-color .12s, background .12s;
+}
+.radio-item:has(input:checked) {
+  border-color: var(--accent); background: var(--accent-lt); font-weight: 600;
+}
+.radio-item input { margin-top: 3px; flex-shrink: 0; cursor: pointer; }
+
+/* Recommendation cards */
+.drec-list { display: flex; flex-direction: column; gap: 10px; }
+
+.drec-card {
+  border-radius: var(--r); padding: 13px 14px;
+  border-left: 5px solid var(--bd-strong); box-shadow: var(--sh);
+  background: #fff;
+}
+.drec-card.primary { border-left-color: var(--accent); background: var(--accent-lt); }
+.drec-card.caution { border-left-color: #f59e0b;       background: var(--warn-bg); }
+.drec-card.adjuvant{ border-left-color: #8b5cf6;       background: #f5f3ff; }
+.drec-card.support { border-left-color: #22c55e;       background: var(--ok-bg); }
+
+.drec-label    { font-size: 0.69rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+.drec-drug     { font-size: 0.95rem; font-weight: 700; color: #1e293b; margin-bottom: 6px; }
+.drec-dose     { font-size: 0.88rem; font-weight: 600; color: #1e3a5f; margin-bottom: 4px; line-height: 1.5; white-space: pre-line; }
+.drec-dose-note{ font-size: 0.78rem; color: #374151; margin-bottom: 6px; line-height: 1.55; }
+.drec-brands   { font-size: 0.76rem; color: var(--muted); margin-bottom: 4px; }
+.drec-note     { font-size: 0.76rem; color: var(--muted); border-top: 1px solid rgba(0,0,0,.08); padding-top: 6px; margin-top: 4px; line-height: 1.5; }
+
+.stop-block {
+  background: var(--danger-bg); border: 2px solid var(--danger);
+  border-radius: var(--r); padding: 16px;
+  color: #7f1d1d; font-size: 0.9rem; line-height: 1.65;
+}
+.stop-block-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+
+/* Active flags banner (step 3) */
+.active-flags-wrap {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 5px;
+  padding: 9px 12px; background: #1e3a5f;
+  border-radius: var(--r-sm); margin-bottom: 10px;
+}
+.active-flags-label { font-size: 0.72rem; color: rgba(255,255,255,.65); margin-right: 4px; flex-shrink: 0; }
+
+/* Monitoring */
+.monitor-list { display: flex; flex-direction: column; gap: 7px; margin-top: 8px; }
+.monitor-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 11px; border-radius: var(--r-sm);
+  border: 1px solid var(--border); background: #fff;
+}
+.monitor-item.priority { border-color: #fca5a5; background: #fff8f8; }
+.monitor-item input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
+.monitor-text { font-size: 0.84rem; line-height: 1.5; }
+.monitor-priority-tag {
+  display: inline-block; font-size: 0.65rem; font-weight: 700;
+  padding: 1px 5px; background: var(--danger-bg); color: var(--danger);
+  border-radius: 6px; margin-left: 5px; white-space: nowrap; vertical-align: middle;
+}
+
+.escalation-list { padding-left: 18px; margin-top: 6px; }
+.escalation-list li { font-size: 0.84rem; color: var(--danger); margin-bottom: 5px; font-weight: 600; line-height: 1.4; }
+
+.nonpharm-list { padding-left: 18px; margin-top: 6px; }
+.nonpharm-list li { font-size: 0.82rem; color: #374151; margin-bottom: 5px; line-height: 1.4; }
+
+@media (min-width: 640px) {
+  .dstep-panel { padding: 14px 20px 0; }
+}
