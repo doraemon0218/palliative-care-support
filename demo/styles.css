@@ -533,6 +533,34 @@ code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.82rem
   .sline { width: 48px; }
 }
 
+/* ===== SYMPTOM WIZARD STEP PANELS (shared) ===== */
+.gi-step-panel, .dl-step-panel, .el-step-panel { display: none; }
+.gi-step-panel.active, .dl-step-panel.active, .el-step-panel.active { display: block; }
+
+/* Stepper items for new wizards (reuse existing sdot/slabel styles) */
+.gi-stepper-item, .dl-stepper-item, .el-stepper-item {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; flex-shrink: 0;
+}
+.gi-stepper-item.pending  .sdot,
+.dl-stepper-item.pending  .sdot,
+.el-stepper-item.pending  .sdot { background: #e5e7eb; color: #9ca3af; }
+.gi-stepper-item.current  .sdot,
+.dl-stepper-item.current  .sdot,
+.el-stepper-item.current  .sdot { background: var(--accent); color: #fff; box-shadow: 0 0 0 3px rgba(29,78,216,.2); }
+.gi-stepper-item.current  .slabel,
+.dl-stepper-item.current  .slabel,
+.el-stepper-item.current  .slabel { color: var(--accent); font-weight: 700; }
+.gi-stepper-item.done     .sdot,
+.dl-stepper-item.done     .sdot,
+.el-stepper-item.done     .sdot { background: #15803d; color: #fff; font-size: 0; }
+.gi-stepper-item.done     .sdot::after,
+.dl-stepper-item.done     .sdot::after,
+.el-stepper-item.done     .sdot::after { content: '✓'; font-size: 0.9rem; }
+
+@media (min-width: 640px) {
+  .gi-step-panel, .dl-step-panel, .el-step-panel { /* padding handled inline */ }
+}
+
 /* ===== DYSPNEA WIZARD ===== */
 .dstep-panel { display: none; padding: 12px 14px 0; }
 .dstep-panel.active { display: block; }
@@ -702,4 +730,66 @@ code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.82rem
 
 @media (min-width: 640px) {
   .dstep-panel { padding: 14px 20px 0; }
+}
+
+/* ===== SELECTABLE RECOMMENDATION CARDS ===== */
+.srec-list { display: flex; flex-direction: column; gap: 10px; }
+
+.srec-card {
+  border-radius: var(--r); padding: 13px 14px;
+  border: 2px solid var(--border); box-shadow: var(--sh);
+  background: #fff; transition: border-color .15s, box-shadow .15s;
+  border-left-width: 5px;
+}
+.srec-card.primary     { border-left-color: var(--accent); background: var(--accent-lt); }
+.srec-card.alternative { border-left-color: #06b6d4;       background: #f0fdff; }
+.srec-card.adjuvant    { border-left-color: #8b5cf6;       background: #f5f3ff; }
+.srec-card.caution     { border-left-color: #f59e0b;       background: var(--warn-bg); }
+.srec-card.support     { border-left-color: #22c55e;       background: var(--ok-bg); }
+.srec-card.selected {
+  outline: 3px solid var(--accent);
+  box-shadow: 0 0 0 3px rgba(29,78,216,.15), var(--sh);
+}
+
+.srec-label    { font-size: 0.69rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+.srec-drug     { font-size: 0.95rem; font-weight: 700; color: #1e293b; margin-bottom: 6px; }
+.srec-dose     { font-size: 0.88rem; font-weight: 600; color: #1e3a5f; margin-bottom: 4px; line-height: 1.5; }
+.srec-dose-note{ font-size: 0.78rem; color: #374151; margin-bottom: 6px; line-height: 1.55; }
+.srec-brands   { font-size: 0.76rem; color: var(--muted); margin-bottom: 4px; }
+.srec-note     { font-size: 0.76rem; color: var(--muted); border-top: 1px solid rgba(0,0,0,.08); padding-top: 6px; margin-top: 4px; line-height: 1.5; }
+
+.srec-traits   { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.srec-pro { font-size: 0.73rem; background: #dcfce7; color: #15803d; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
+.srec-con { font-size: 0.73rem; background: #fef3c7; color: #92400e; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
+
+.srec-sel-btn {
+  width: 100%; padding: 10px; margin-top: 8px;
+  border-radius: var(--r-sm); border: 2px solid var(--bd-strong);
+  background: #fff; color: var(--text);
+  font-size: 0.88rem; font-weight: 700; cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.srec-sel-btn:hover { border-color: var(--accent); color: var(--accent); }
+.srec-sel-btn.chosen { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Symptom selection checkboxes (EOL multi-symptom) */
+.symptom-check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
+.symptom-check-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 9px 11px; border: 1px solid var(--border);
+  border-radius: var(--r-sm); background: #fff; cursor: pointer;
+  font-size: 0.84rem; font-weight: 400; line-height: 1.4;
+  transition: border-color .12s, background .12s;
+}
+.symptom-check-item:has(input:checked) {
+  border-color: var(--accent); background: var(--accent-lt); font-weight: 600;
+}
+.symptom-check-item input { margin-top: 2px; flex-shrink: 0; cursor: pointer; }
+
+/* Section divider inside step4 */
+.sel-drug-banner {
+  background: #1e3a5f; color: #fff;
+  padding: 10px 14px; border-radius: var(--r-sm);
+  font-size: 0.88rem; margin-bottom: 8px;
+  font-weight: 700;
 }

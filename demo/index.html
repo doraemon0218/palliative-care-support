@@ -25,6 +25,9 @@
       <button class="tab-btn active" data-page="home">ホーム</button>
       <button class="tab-btn" data-page="converter">換算</button>
       <button class="tab-btn" data-page="dyspnea">呼吸困難</button>
+      <button class="tab-btn" data-page="gi">消化器</button>
+      <button class="tab-btn" data-page="delirium">せん妄</button>
+      <button class="tab-btn" data-page="eol">死亡直前期</button>
       <button class="tab-btn" data-page="audit">ログ</button>
     </nav>
 
@@ -49,20 +52,17 @@
                 <span class="s-icon">😮‍💨</span>
                 <span>呼吸困難</span>
               </button>
-              <button class="symptom-btn disabled">
+              <button class="symptom-btn primary" data-target="gi">
                 <span class="s-icon">🤢</span>
                 <span>消化器症状</span>
-                <span class="wip">準備中</span>
               </button>
-              <button class="symptom-btn disabled">
+              <button class="symptom-btn primary" data-target="delirium">
                 <span class="s-icon">🧠</span>
                 <span>せん妄・不眠</span>
-                <span class="wip">準備中</span>
               </button>
-              <button class="symptom-btn disabled">
+              <button class="symptom-btn primary" data-target="eol">
                 <span class="s-icon">🕯</span>
                 <span>死亡直前期</span>
-                <span class="wip">準備中</span>
               </button>
             </div>
           </section>
@@ -318,6 +318,349 @@
           <button id="dnextBtn" class="btn-primary">次へ →</button>
         </div>
 
+      </section>
+
+      <!-- ========== GI SYMPTOMS ========== -->
+      <section id="giPage" class="page">
+        <div class="stepper">
+          <div class="gi-stepper-item current" data-gistep="1">
+            <div class="sdot">1</div><div class="slabel">安全確認</div>
+          </div>
+          <div class="sline"></div>
+          <div class="gi-stepper-item pending" data-gistep="2">
+            <div class="sdot">2</div><div class="slabel">症状評価</div>
+          </div>
+          <div class="sline"></div>
+          <div class="gi-stepper-item pending" data-gistep="3">
+            <div class="sdot">3</div><div class="slabel">治療選択</div>
+          </div>
+          <div class="sline"></div>
+          <div class="gi-stepper-item pending" data-gistep="4">
+            <div class="sdot">4</div><div class="slabel">確認</div>
+          </div>
+        </div>
+
+        <!-- GI Step 1: Safety checks -->
+        <div id="gistep1" class="gi-step-panel active" style="padding:12px 14px 0">
+          <div class="card">
+            <h3>安全性チェック <span class="step-num">1 / 4</span></h3>
+            <p class="field-hint">患者の状態に該当するものをすべて選択してください。なければそのまま「次へ」。</p>
+            <div id="giStopBanner" class="stop-banner">
+              ⛔ イレウス（腸閉塞）が疑われます。消化管蠕動促進薬は禁忌です。消化器科・外科へのコンサルトを優先してください。
+            </div>
+            <div id="giSafetyChecklist" class="safety-checklist"></div>
+            <div id="giSafetyFlagSummary" class="safety-flag-summary" style="display:none;"></div>
+          </div>
+        </div>
+
+        <!-- GI Step 2: Assessment -->
+        <div id="gistep2" class="gi-step-panel" style="padding:12px 14px 0">
+          <div class="card">
+            <h3>症状評価 <span class="step-num">2 / 4</span></h3>
+            <div class="form-stack">
+              <label>年齢層 <span class="req">*</span></label>
+              <select id="giAgeGroup">
+                <option value="">選択してください</option>
+                <option value="<65">64歳以下</option>
+                <option value="65-74">65〜74歳</option>
+                <option value=">=75">75歳以上（高齢者：減量考慮）</option>
+              </select>
+
+              <label style="margin-top:8px">主な症状 <span class="req">*</span></label>
+              <div class="radio-group">
+                <label class="radio-item">
+                  <input type="radio" name="gi_symptom" value="nausea">
+                  <span>悪心・嘔吐（吐き気・嘔吐している）</span>
+                </label>
+                <label class="radio-item">
+                  <input type="radio" name="gi_symptom" value="constipation">
+                  <span>便秘（排便困難・出ない）</span>
+                </label>
+              </div>
+
+              <div id="giNrsSection" style="display:none;">
+                <label style="margin-top:8px">悪心の強さ（NRS 0〜10）<span class="req">*</span></label>
+                <div id="giNrsButtons" class="nrs-row"></div>
+                <div id="giNrsLabel" class="nrs-label"></div>
+              </div>
+
+              <div id="giLastBMSection" style="display:none;">
+                <label style="margin-top:8px">最終排便からの日数</label>
+                <select id="giLastBM">
+                  <option value="1">1日前（便秘気味）</option>
+                  <option value="2">2〜3日前</option>
+                  <option value="4" selected>4〜5日前（中等度）</option>
+                  <option value="7">7日以上前（重度）</option>
+                </select>
+              </div>
+
+              <label style="margin-top:8px">経口投与は可能ですか？<span class="req">*</span></label>
+              <div class="radio-group">
+                <label class="radio-item">
+                  <input type="radio" name="gi_oral" value="yes">
+                  <span>可能（嚥下できる）</span>
+                </label>
+                <label class="radio-item">
+                  <input type="radio" name="gi_oral" value="no">
+                  <span>困難（嚥下障害・意識低下など）</span>
+                </label>
+              </div>
+
+              <label style="margin-top:8px">オピオイド（モルヒネ・フェンタニル等）使用が原因と考えられますか？</label>
+              <div class="radio-group">
+                <label class="radio-item">
+                  <input type="radio" name="gi_opioid_cause" value="yes">
+                  <span>はい（オピオイド開始・増量後に出現/悪化）</span>
+                </label>
+                <label class="radio-item">
+                  <input type="radio" name="gi_opioid_cause" value="no" checked>
+                  <span>いいえ / 不明</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GI Step 3: Selectable recommendations -->
+        <div id="gistep3" class="gi-step-panel" style="padding:0">
+          <div id="gistep3Content"><p class="muted" style="padding:14px">評価を完了してください。</p></div>
+        </div>
+
+        <!-- GI Step 4: Selected detail + monitoring -->
+        <div id="gistep4" class="gi-step-panel" style="padding:12px 14px 0">
+          <div id="gistep4Content"></div>
+          <button id="giRestartBtn" class="btn-secondary" style="width:100%;margin-top:14px;">最初から入力し直す</button>
+        </div>
+
+        <div class="wizard-nav">
+          <button id="giprevBtn" class="btn-secondary" style="display:none;">← 戻る</button>
+          <button id="ginextBtn" class="btn-primary">次へ →</button>
+        </div>
+      </section>
+
+      <!-- ========== DELIRIUM / INSOMNIA ========== -->
+      <section id="deliriumPage" class="page">
+        <div class="stepper">
+          <div class="dl-stepper-item current" data-dlstep="1">
+            <div class="sdot">1</div><div class="slabel">安全確認</div>
+          </div>
+          <div class="sline"></div>
+          <div class="dl-stepper-item pending" data-dlstep="2">
+            <div class="sdot">2</div><div class="slabel">症状評価</div>
+          </div>
+          <div class="sline"></div>
+          <div class="dl-stepper-item pending" data-dlstep="3">
+            <div class="sdot">3</div><div class="slabel">治療選択</div>
+          </div>
+          <div class="sline"></div>
+          <div class="dl-stepper-item pending" data-dlstep="4">
+            <div class="sdot">4</div><div class="slabel">確認</div>
+          </div>
+        </div>
+
+        <!-- DL Step 1: Safety checks -->
+        <div id="dlstep1" class="dl-step-panel active" style="padding:12px 14px 0">
+          <div class="card">
+            <h3>安全性チェック <span class="step-num">1 / 4</span></h3>
+            <p class="field-hint">患者の状態に該当するものをすべて選択してください。</p>
+            <div id="dlSafetyChecklist" class="safety-checklist"></div>
+            <div id="dlSafetyFlagSummary" class="safety-flag-summary" style="display:none;"></div>
+          </div>
+        </div>
+
+        <!-- DL Step 2: Assessment -->
+        <div id="dlstep2" class="dl-step-panel" style="padding:12px 14px 0">
+          <div class="card">
+            <h3>症状評価 <span class="step-num">2 / 4</span></h3>
+            <div class="form-stack">
+              <label>年齢層 <span class="req">*</span></label>
+              <select id="dlAgeGroup">
+                <option value="">選択してください</option>
+                <option value="<65">64歳以下</option>
+                <option value="65-74">65〜74歳</option>
+                <option value=">=75">75歳以上（高齢者：減量考慮）</option>
+              </select>
+
+              <label style="margin-top:8px">主な問題 <span class="req">*</span></label>
+              <div class="radio-group">
+                <label class="radio-item">
+                  <input type="radio" name="dl_problem" value="delirium">
+                  <span>せん妄（意識の混乱・見当識障害・幻覚など）</span>
+                </label>
+                <label class="radio-item">
+                  <input type="radio" name="dl_problem" value="insomnia">
+                  <span>不眠（眠れない・夜間覚醒が多い）</span>
+                </label>
+                <label class="radio-item">
+                  <input type="radio" name="dl_problem" value="both">
+                  <span>両方（せん妄＋不眠が合併している）</span>
+                </label>
+              </div>
+
+              <div id="dlDeliriumSection" style="display:none;">
+                <label style="margin-top:8px">せん妄のタイプ</label>
+                <div class="radio-group">
+                  <label class="radio-item">
+                    <input type="radio" name="dl_type" value="hyperactive">
+                    <span>過活動型（興奮・幻覚・叫ぶ・危険行動）</span>
+                  </label>
+                  <label class="radio-item">
+                    <input type="radio" name="dl_type" value="hypoactive">
+                    <span>低活動型（ぼんやり・傾眠・反応鈍い）</span>
+                  </label>
+                  <label class="radio-item">
+                    <input type="radio" name="dl_type" value="mixed">
+                    <span>混合型（両方が交互に出現）</span>
+                  </label>
+                </div>
+
+                <label class="check-label" style="margin-top:8px">
+                  <input type="checkbox" id="dlCauseExplored">
+                  可逆的原因（電解質異常・感染症・尿閉・便秘・薬剤）の評価・是正を行った
+                </label>
+              </div>
+
+              <label style="margin-top:8px">経口投与は可能ですか？<span class="req">*</span></label>
+              <div class="radio-group">
+                <label class="radio-item">
+                  <input type="radio" name="dl_oral" value="yes">
+                  <span>可能（嚥下できる）</span>
+                </label>
+                <label class="radio-item">
+                  <input type="radio" name="dl_oral" value="no">
+                  <span>困難（嚥下障害・意識低下・興奮で服薬拒否など）</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DL Step 3: Selectable recommendations -->
+        <div id="dlstep3" class="dl-step-panel" style="padding:0">
+          <div id="dlstep3Content"><p class="muted" style="padding:14px">評価を完了してください。</p></div>
+        </div>
+
+        <!-- DL Step 4: Selected detail + monitoring -->
+        <div id="dlstep4" class="dl-step-panel" style="padding:12px 14px 0">
+          <div id="dlstep4Content"></div>
+          <button id="dlRestartBtn" class="btn-secondary" style="width:100%;margin-top:14px;">最初から入力し直す</button>
+        </div>
+
+        <div class="wizard-nav">
+          <button id="dlprevBtn" class="btn-secondary" style="display:none;">← 戻る</button>
+          <button id="dlnextBtn" class="btn-primary">次へ →</button>
+        </div>
+      </section>
+
+      <!-- ========== END OF LIFE ========== -->
+      <section id="eolPage" class="page">
+        <div class="stepper">
+          <div class="el-stepper-item current" data-elstep="1">
+            <div class="sdot">1</div><div class="slabel">状態確認</div>
+          </div>
+          <div class="sline"></div>
+          <div class="el-stepper-item pending" data-elstep="2">
+            <div class="sdot">2</div><div class="slabel">症状評価</div>
+          </div>
+          <div class="sline"></div>
+          <div class="el-stepper-item pending" data-elstep="3">
+            <div class="sdot">3</div><div class="slabel">治療選択</div>
+          </div>
+          <div class="sline"></div>
+          <div class="el-stepper-item pending" data-elstep="4">
+            <div class="sdot">4</div><div class="slabel">ケア計画</div>
+          </div>
+        </div>
+
+        <!-- EOL Step 1: Safety checks -->
+        <div id="elstep1" class="el-step-panel active" style="padding:12px 14px 0">
+          <div class="card">
+            <h3>状態確認チェック <span class="step-num">1 / 4</span></h3>
+            <p class="field-hint">患者の現在の状態に該当するものをすべて選択してください。</p>
+            <div id="elSafetyChecklist" class="safety-checklist"></div>
+            <div id="elSafetyFlagSummary" class="safety-flag-summary" style="display:none;"></div>
+          </div>
+        </div>
+
+        <!-- EOL Step 2: Assessment -->
+        <div id="elstep2" class="el-step-panel" style="padding:12px 14px 0">
+          <div class="card">
+            <h3>症状評価 <span class="step-num">2 / 4</span></h3>
+            <div class="form-stack">
+              <label>年齢層 <span class="req">*</span></label>
+              <select id="elAgeGroup">
+                <option value="">選択してください</option>
+                <option value="<65">64歳以下</option>
+                <option value="65-74">65〜74歳</option>
+                <option value=">=75">75歳以上（高齢者：減量考慮）</option>
+              </select>
+
+              <label style="margin-top:8px">推定予後 <span class="req">*</span></label>
+              <div class="radio-group">
+                <label class="radio-item">
+                  <input type="radio" name="el_prognosis" value="hours">
+                  <span>時間〜数日単位（瀕死期：意識低下・顎呼吸・無尿など）</span>
+                </label>
+                <label class="radio-item">
+                  <input type="radio" name="el_prognosis" value="days">
+                  <span>数日〜1〜2週間単位（臨死期：経口困難・衰弱進行中）</span>
+                </label>
+              </div>
+
+              <label style="margin-top:8px">現在の主な症状（複数選択可）<span class="req">*</span></label>
+              <div class="symptom-check-grid">
+                <label class="symptom-check-item">
+                  <input type="checkbox" name="el_symptom" value="pain">
+                  <span>疼痛（安静時・体動時の痛み）</span>
+                </label>
+                <label class="symptom-check-item">
+                  <input type="checkbox" name="el_symptom" value="dyspnea">
+                  <span>呼吸困難（息苦しさ）</span>
+                </label>
+                <label class="symptom-check-item">
+                  <input type="checkbox" name="el_symptom" value="rattle">
+                  <span>死前喘鳴（喉・気道の雑音）</span>
+                </label>
+                <label class="symptom-check-item">
+                  <input type="checkbox" name="el_symptom" value="delirium">
+                  <span>せん妄・興奮（不穏・叫ぶ）</span>
+                </label>
+                <label class="symptom-check-item">
+                  <input type="checkbox" name="el_symptom" value="anxiety">
+                  <span>強い不安・苦痛感</span>
+                </label>
+              </div>
+
+              <label style="margin-top:8px">現在オピオイドを定期投与中ですか？</label>
+              <div class="radio-group">
+                <label class="radio-item">
+                  <input type="radio" name="el_onopioid" value="yes">
+                  <span>はい（持続注射または経口投与中）</span>
+                </label>
+                <label class="radio-item">
+                  <input type="radio" name="el_onopioid" value="no" checked>
+                  <span>いいえ（オピオイド未使用）</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EOL Step 3: Selectable recommendations -->
+        <div id="elstep3" class="el-step-panel" style="padding:0">
+          <div id="elstep3Content"><p class="muted" style="padding:14px">評価を完了してください。</p></div>
+        </div>
+
+        <!-- EOL Step 4: Selected detail + care plan -->
+        <div id="elstep4" class="el-step-panel" style="padding:12px 14px 0">
+          <div id="elstep4Content"></div>
+          <button id="elRestartBtn" class="btn-secondary" style="width:100%;margin-top:14px;">最初から入力し直す</button>
+        </div>
+
+        <div class="wizard-nav">
+          <button id="elprevBtn" class="btn-secondary" style="display:none;">← 戻る</button>
+          <button id="elnextBtn" class="btn-primary">次へ →</button>
+        </div>
       </section>
 
       <!-- ========== AUDIT LOG ========== -->
